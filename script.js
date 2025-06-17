@@ -3,12 +3,12 @@
 // --- IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION HERE ---
 // You get this from the Firebase Console -> Project Settings -> General -> Your apps -> Web app
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyC14bqWc3VtB9vB5R7nRKro-S5F6BgUsg4",
+    authDomain: "auiz-aarn-bot-32baa.firebaseapp.com",
+    projectId: "auiz-aarn-bot-32baa",
+    storageBucket: "auiz-aarn-bot-32baa.firebasestorage.app",
+    messagingSenderId: "779644493972",
+    appId: "1:779644493972:web:cffebcbcd0fa6318059481"
 };
 
 // Initialize Firebase
