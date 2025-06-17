@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Auiz Aarn Bot</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Telegram Web App script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Monetag Ads SDK -->
+    <script src='//libtl.com/sdk.js' data-zone='9405037' data-sdk='show_9405037'></script>
+</head>
+<body>
+
+    <div id="loader" class="loader-container">
+        <div class="spinner"></div>
+        <p>Initializing Auiz Aarn Bot...</p>
+    </div>
+
+    <div id="app-container" class="app" style="display: none;">
+
+        <!-- 👤 Profile Section -->
+        <section id="profile-section" class="page active">
+            <h1 class="page-title">Profile</h1>
+            <div class="profile-header">
+                <div class="avatar">👤</div>
+                <h2 id="profile-username">Loading...</h2>
+                <p id="profile-userid">ID: Loading...</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Points</h3>
+                    <p id="profile-points">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Referrals</h3>
+                    <p id="profile-referrals">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Daily Energy</h3>
+                    <p id="profile-energy">0 / 5</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Daily Quiz Limit</h3>
+                    <p id="profile-quiz-limit">0 / 15</p>
+                </div>
+            </div>
+             <div class="referral-code-display">
+                <h3>Your Referral Code</h3>
+                <p id="profile-referral-code">Loading...</p>
+            </div>
+        </section>
+
+        <!-- 🎮 Quiz Section -->
+        <section id="quiz-section" class="page">
+            <h1 class="page-title">Quiz Arena</h1>
+            <div id="quiz-main-view">
+                <p>Answer questions to earn points!</p>
+                <p>Correct: <span class="points-green">+5 Points</span></p>
+                <p>Incorrect: <span class="points-red">+1 Point</span></p>
+                <button id="start-quiz-btn" class="glow-button">Start Quiz</button>
+            </div>
+            <div id="quiz-game-view" style="display: none;">
+                <div class="quiz-timer-container">
+                    <div id="quiz-timer-bar"></div>
+                </div>
+                <h2 id="quiz-question">Loading question...</h2>
+                <div id="quiz-options" class="quiz-options-grid">
+                    <!-- Options will be injected by JavaScript -->
+                </div>
+                <p id="quiz-feedback"></p>
+            </div>
+        </section>
+
+        <!-- ⚜️ Premium Section -->
+        <section id="premium-section" class="page">
+            <h1 class="page-title">Premium & Tasks</h1>
+            <div class="task-list">
+                <div class="task-card">
+                    <h3>Join Channel (Daily)</h3>
+                    <p>Join our Telegram channel for a daily reward.</p>
+                    <p>Reward: <span class="points-green">+5 Points</span></p>
+                    <button id="join-channel-btn" class="glow-button">Join & Claim</button>
+                </div>
+                <div class="task-card">
+                    <h3>Get Extra Quizzes</h3>
+                    <p>Watch a short ad to get 1 extra quiz attempt for today. (Limit: 15/day)</p>
+                    <p id="ad-quiz-limit-tracker">Ads watched today: 0/15</p>
+                    <button id="watch-ad-quiz-btn" class="glow-button">Watch Ad</button>
+                </div>
+                <div class="task-card">
+                    <h3>Get Extra Energy</h3>
+                    <p>Watch a short ad to get 1 extra energy for today. (Limit: 20/day)</p>
+                     <p id="ad-energy-limit-tracker">Ads watched today: 0/20</p>
+                    <button id="watch-ad-energy-btn" class="glow-button">Watch Ad</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 👥 Referral Section -->
+        <section id="referral-section" class="page">
+            <h1 class="page-title">Referrals</h1>
+            <div class="referral-info">
+                <h3>Your Referral Code</h3>
+                <div class="code-box">
+                    <span id="referral-code-text">Loading...</span>
+                    <button id="copy-referral-btn">Copy</button>
+                </div>
+                <button id="share-referral-btn" class="glow-button">Share Invite Link</button>
+            </div>
+            <div class="referral-submit">
+                <h3>Have a Referral Code?</h3>
+                <p>Enter a code to get <span class="points-green">+5 Points!</span></p>
+                <input type="text" id="submit-referral-input" placeholder="Enter code (e.g., AGuttu4102H)">
+                <button id="submit-referral-btn" class="glow-button">Submit Code</button>
+            </div>
+        </section>
+
+        <!-- ⌛ History Section -->
+        <section id="history-section" class="page">
+            <h1 class="page-title">Transaction History</h1>
+            <div id="history-list" class="history-list">
+                <!-- History items will be injected by JavaScript -->
+                <p>No history yet.</p>
+            </div>
+        </section>
+
+        <!-- 💸 Withdraw Section -->
+        <section id="withdraw-section" class="page">
+            <h1 class="page-title">Withdraw Points</h1>
+            <p>1000 Points ≈ $0.33 (approx)</p>
+            <div class="withdraw-options">
+                <button class="withdraw-option-btn" data-points="850" data-usd="0.1">850 Points ($0.1) <small>(First Time Only)</small></button>
+                <button class="withdraw-option-btn" data-points="3000" data-usd="1">3000 Points ($1)</button>
+                <button class="withdraw-option-btn" data-points="5500" data-usd="2">5500 Points ($2)</button>
+                <button class="withdraw-option-btn" data-points="10500" data-usd="3.5">10500 Points ($3.5)</button>
+            </div>
+            <div class="withdraw-form">
+                <h3 id="selected-withdraw-amount">Select an option above</h3>
+                <select id="withdraw-method">
+                    <option value="ton">TON Wallet</option>
+                    <option value="binance">Binance Pay ID</option>
+                </select>
+                <input type="text" id="withdraw-address" placeholder="Enter Wallet Address or Pay ID">
+                <button id="submit-withdrawal-btn" class="glow-button" disabled>Submit Request</button>
+            </div>
+        </section>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-target="profile-section">👤<span>Profile</span></button>
+            <button class="nav-btn" data-target="quiz-section">🎮<span>Quiz</span></button>
+            <button class="nav-btn" data-target="premium-section">⚜️<span>Premium</span></button>
+            <button class="nav-btn" data-target="referral-section">👥<span>Referral</span></button>
+            <button class="nav-btn" data-target="history-section">⌛<span>History</span></button>
+            <button class="nav-btn" data-target="withdraw-section">💸<span>Withdraw</span></button>
+        </nav>
+    </div>
+
+    <script src="quiz-data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
