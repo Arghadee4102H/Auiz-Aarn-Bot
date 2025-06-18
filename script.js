@@ -12,6 +12,11 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+// IMPORTANT: Add these script tags to your index.html <head> section if you haven't already
+// <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+// <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+// I am adding the initialization code assuming these scripts are loaded.
+
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
@@ -88,7 +93,6 @@ async function loadOrCreateUser(user) {
                 daily_quiz_limit: 15, // Reset quiz limit
                 daily_ad_quiz_watched: 0,
                 daily_ad_energy_watched: 0,
-                // Do not reset last_channel_join_bonus_date here
             });
             // Refetch the updated data
             const updatedDoc = await userRef.get();
@@ -180,12 +184,10 @@ function loadNextQuestion() {
         return;
     }
     
-    // Find a question that hasn't been played
     let availableQuestions = quizData.map((_, index) => index)
-        .filter(index => !userData.played_question_indices.includes(index));
+        .filter(index => !(userData.played_question_indices || []).includes(index));
 
     if (availableQuestions.length === 0) {
-        // Reset if all questions have been seen
         userData.played_question_indices = [];
         availableQuestions = quizData.map((_, index) => index);
         db.collection('users').doc(String(currentUser.id)).update({ played_question_indices: [] });
@@ -215,7 +217,6 @@ function startTimer() {
     timerBar.style.transition = 'none';
     timerBar.style.width = '100%';
     
-    // Force reflow
     void timerBar.offsetWidth; 
 
     timerBar.style.transition = `width ${timeLeft}s linear`;
@@ -248,17 +249,14 @@ async function handleAnswer(selectedButton, selectedAnswer, correctAnswer) {
         if (selectedButton) selectedButton.classList.add('incorrect');
         feedbackEl.innerText = `Oops! The correct answer was "${correctAnswer}". You win ${pointsEarned} point.`;
         feedbackEl.style.color = 'var(--glow-red)';
-        // Highlight correct answer
         document.querySelectorAll('.option-btn').forEach(btn => {
             if (btn.innerText === correctAnswer) btn.classList.add('correct');
         });
         
-        // Decrease energy
         userData.energy = Math.max(0, userData.energy - 1);
         await db.collection('users').doc(String(currentUser.id)).update({ energy: userData.energy });
     }
 
-    // Update user data
     userData.total_points += pointsEarned;
     userData.daily_quiz_limit -= 1;
     await db.collection('users').doc(String(currentUser.id)).update({
@@ -268,7 +266,6 @@ async function handleAnswer(selectedButton, selectedAnswer, correctAnswer) {
     });
     
     await logTransaction('quiz', pointsEarned, document.getElementById('quiz-question').innerText.substring(0, 30) + '...');
-
     updateAllUI();
 
     setTimeout(() => {
@@ -296,10 +293,8 @@ async function joinChannelTask() {
         return;
     }
     
-    // Open the channel link
     tg.openTelegramLink("https://t.me/AGuttuGhosh");
     
-    // Reward the user
     const pointsEarned = 5;
     userData.total_points += pointsEarned;
     userData.last_channel_join_bonus_date = today;
@@ -310,7 +305,6 @@ async function joinChannelTask() {
     });
     
     await logTransaction('task', pointsEarned, 'Joined Telegram Channel');
-    
     alert(`Thank you! ${pointsEarned} points have been added.`);
     updateAllUI();
 }
@@ -325,12 +319,9 @@ function watchAdFor(type) {
         return;
     }
 
-    // This is where you call the Monetag Rewarded Interstitial
     if (typeof show_9405037 === 'function') {
         show_9405037().then(async () => {
-            // This code runs AFTER the user watches the ad.
             alert('Ad finished! You have received your reward.');
-            
             const userRef = db.collection('users').doc(String(currentUser.id));
             
             if (type === 'quiz') {
@@ -360,7 +351,6 @@ function watchAdFor(type) {
     }
 }
 
-
 // --- REFERRAL LOGIC ---
 function copyReferralCode() {
     navigator.clipboard.writeText(userData.referral_code).then(() => {
@@ -380,112 +370,96 @@ async function submitReferralCode() {
     const input = document.getElementById('submit-referral-input');
     const code = input.value.trim();
 
-    if (!code) {
-        alert("Please enter a code.");
-        return;
-    }
-    if (code === userData.referral_code) {
-        alert("You cannot use your own referral code.");
-        return;
-    }
-    if (userData.referred_by) {
-        alert("You have already used a referral code.");
-        return;
-    }
+    if (!code) { return alert("Please enter a code."); }
+    if (code === userData.referral_code) { return alert("You cannot use your own referral code."); }
+    if (userData.referred_by) { return alert("You have already used a referral code."); }
 
     const referralQuery = await db.collection('users').where('referral_code', '==', code).limit(1).get();
-
-    if (referralQuery.empty) {
-        alert("Invalid referral code.");
-        return;
-    }
+    if (referralQuery.empty) { return alert("Invalid referral code."); }
     
     const referrerDoc = referralQuery.docs[0];
     const referrerId = referrerDoc.id;
     const referrerRef = db.collection('users').doc(referrerId);
     const currentUserRef = db.collection('users').doc(String(currentUser.id));
 
-    // Use a transaction to ensure both users are updated correctly
     await db.runTransaction(async (transaction) => {
-        // Update referrer: +10 points, +1 referral
         transaction.update(referrerRef, {
             total_points: firebase.firestore.FieldValue.increment(10),
             total_referrals: firebase.firestore.FieldValue.increment(1)
         });
-        
-        // Update current user: +5 points, set referred_by
         transaction.update(currentUserRef, {
             total_points: firebase.firestore.FieldValue.increment(5),
             referred_by: referrerId
         });
     });
 
-    // Log transactions
     await logTransaction('referral_bonus', 5, `Used code from ${referrerDoc.data().first_name}`);
-    // We can't easily log for the other user here, but it could be done with a cloud function.
-
-    // Update local data
     userData.total_points += 5;
     userData.referred_by = referrerId;
-
     alert("Success! You and your referrer have received points.");
     updateAllUI();
     input.disabled = true;
     document.getElementById('submit-referral-btn').disabled = true;
 }
 
-// --- HISTORY LOGIC ---
+// --- HISTORY LOGIC (UPDATED WITH ERROR HANDLING) ---
 async function fetchHistory() {
     const historyList = document.getElementById('history-list');
     historyList.innerHTML = '<div class="spinner"></div>';
 
-    const historyQuery = await db.collection('transactions')
-        .where('user_id', '==', String(currentUser.id))
-        .orderBy('timestamp', 'desc')
-        .limit(50)
-        .get();
+    try {
+        const historyQuery = await db.collection('transactions')
+            .where('user_id', '==', String(currentUser.id))
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .get();
 
-    if (historyQuery.empty) {
-        historyList.innerHTML = '<p>No transaction history found.</p>';
-        return;
+        if (historyQuery.empty) {
+            historyList.innerHTML = '<p>No transaction history found.</p>';
+            return;
+        }
+
+        historyList.innerHTML = '';
+        historyQuery.forEach(doc => {
+            const item = doc.data();
+            const date = item.timestamp ? item.timestamp.toDate().toLocaleString() : 'Just now';
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'history-item';
+            
+            let pointsClass = '';
+            let pointsSign = '';
+            if (item.points > 0) {
+                pointsClass = 'positive';
+                pointsSign = '+';
+            } else if (item.points < 0) {
+                pointsClass = 'negative';
+            }
+            
+            let detailsHtml = `<div class="details">
+                                <span class="type">${item.description}</span>
+                                <span class="date">${date}</span>
+                               </div>`;
+            if(item.type === 'withdrawal') {
+                detailsHtml = `<div class="details">
+                                <span class="type">Withdrawal Request</span>
+                                <span class="date">${date}</span>
+                                <span class="status-${item.status.toLowerCase()}">Status: ${item.status}</span>
+                               </div>`;
+            }
+            
+            itemDiv.innerHTML = `
+                ${detailsHtml}
+                <span class="points ${pointsClass}">${pointsSign}${item.points}</span>
+            `;
+            historyList.appendChild(itemDiv);
+        });
+    } catch (error) {
+        console.error("Error fetching history:", error);
+        historyList.innerHTML = '<p style="color: var(--glow-red);">Could not load history. Please try again later.</p>';
     }
-
-    historyList.innerHTML = '';
-    historyQuery.forEach(doc => {
-        const item = doc.data();
-        const date = item.timestamp.toDate().toLocaleString();
-        
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'history-item';
-        
-        let pointsClass = '';
-        let pointsSign = '';
-        if (item.points > 0) {
-            pointsClass = 'positive';
-            pointsSign = '+';
-        } else if (item.points < 0) {
-            pointsClass = 'negative';
-        }
-        
-        let detailsHtml = `<div class="details">
-                            <span class="type">${item.description}</span>
-                            <span class="date">${date}</span>
-                           </div>`;
-        if(item.type === 'withdrawal') {
-            detailsHtml = `<div class="details">
-                            <span class="type">Withdrawal Request</span>
-                            <span class="date">${date}</span>
-                            <span class="status-${item.status.toLowerCase()}">Status: ${item.status}</span>
-                           </div>`;
-        }
-        
-        itemDiv.innerHTML = `
-            ${detailsHtml}
-            <span class="points ${pointsClass}">${pointsSign}${item.points}</span>
-        `;
-        historyList.appendChild(itemDiv);
-    });
 }
+
 
 async function logTransaction(type, points, description, status = 'completed') {
     await db.collection('transactions').add({
@@ -516,28 +490,14 @@ function selectWithdrawOption(event) {
 }
 
 async function submitWithdrawal() {
-    if (!selectedWithdraw) {
-        alert("Please select a withdrawal amount.");
-        return;
-    }
+    if (!selectedWithdraw) { return alert("Please select a withdrawal amount."); }
 
     const method = document.getElementById('withdraw-method').value;
     const address = document.getElementById('withdraw-address').value.trim();
 
-    if (!address) {
-        alert("Please enter your wallet address or Pay ID.");
-        return;
-    }
-
-    if (userData.total_points < selectedWithdraw.points) {
-        alert("You do not have enough points for this withdrawal.");
-        return;
-    }
-
-    if (selectedWithdraw.points === 850 && userData.first_850_withdrawal_used) {
-        alert("You can only use the 850 points withdrawal option once.");
-        return;
-    }
+    if (!address) { return alert("Please enter your wallet address or Pay ID."); }
+    if (userData.total_points < selectedWithdraw.points) { return alert("You do not have enough points for this withdrawal."); }
+    if (selectedWithdraw.points === 850 && userData.first_850_withdrawal_used) { return alert("You can only use the 850 points withdrawal option once."); }
     
     const submitBtn = document.getElementById('submit-withdrawal-btn');
     submitBtn.disabled = true;
@@ -546,24 +506,14 @@ async function submitWithdrawal() {
     try {
         const userRef = db.collection('users').doc(String(currentUser.id));
         
-        // Use a transaction for safety
         await db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(userRef);
-            if (userDoc.data().total_points < selectedWithdraw.points) {
-                throw "Insufficient points!";
-            }
+            if (userDoc.data().total_points < selectedWithdraw.points) { throw "Insufficient points!"; }
             
-            const updateData = {
-                total_points: firebase.firestore.FieldValue.increment(-selectedWithdraw.points)
-            };
-            
-            if (selectedWithdraw.points === 850) {
-                updateData.first_850_withdrawal_used = true;
-            }
-            
+            const updateData = { total_points: firebase.firestore.FieldValue.increment(-selectedWithdraw.points) };
+            if (selectedWithdraw.points === 850) { updateData.first_850_withdrawal_used = true; }
             transaction.update(userRef, updateData);
 
-            // Create withdrawal request
             const withdrawalRef = db.collection('withdrawals').doc();
             transaction.set(withdrawalRef, {
                 user_id: String(currentUser.id),
@@ -576,7 +526,6 @@ async function submitWithdrawal() {
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // Log it in general transactions as well
             const transactionRef = db.collection('transactions').doc();
             transaction.set(transactionRef, {
                 user_id: String(currentUser.id),
@@ -588,11 +537,8 @@ async function submitWithdrawal() {
             });
         });
         
-        // Update local data
         userData.total_points -= selectedWithdraw.points;
-        if (selectedWithdraw.points === 850) {
-            userData.first_850_withdrawal_used = true;
-        }
+        if (selectedWithdraw.points === 850) { userData.first_850_withdrawal_used = true; }
 
         alert("Withdrawal request submitted successfully! It will be processed within 24-48 hours.");
         updateAllUI();
