@@ -1,7 +1,6 @@
 // script.js
 
 // --- IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION HERE ---
-// You get this from the Firebase Console -> Project Settings -> General -> Your apps -> Web app
 const firebaseConfig = {
     apiKey: "AIzaSyC14bqWc3VtB9vB5R7nRKro-S5F6BgUsg4",
     authDomain: "auiz-aarn-bot-32baa.firebaseapp.com",
@@ -12,11 +11,6 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-// IMPORTANT: Add these script tags to your index.html <head> section if you haven't already
-// <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-// <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-// I am adding the initialization code assuming these scripts are loaded.
-
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
@@ -38,15 +32,12 @@ const navButtons = document.querySelectorAll('.nav-btn');
 // --- INITIALIZATION ---
 window.addEventListener('DOMContentLoaded', () => {
     tg.ready();
-    tg.expand(); // Expand the web app to full screen
+    tg.expand();
 
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
         currentUser = tg.initDataUnsafe.user;
         loadOrCreateUser(currentUser);
     } else {
-        // For testing in a regular browser
-        // currentUser = { id: 12345, username: 'testuser', first_name: 'Test' };
-        // loadOrCreateUser(currentUser);
         loader.innerHTML = '<p>Error: Please open this app within Telegram.</p>';
     }
 
@@ -58,7 +49,6 @@ async function loadOrCreateUser(user) {
     const doc = await userRef.get();
 
     if (!doc.exists) {
-        // Create new user
         const today = new Date().toISOString().split('T')[0];
         const newUser = {
             telegram_user_id: user.id,
@@ -71,7 +61,6 @@ async function loadOrCreateUser(user) {
             total_referrals: 0,
             referred_by: null,
             last_login_date: today,
-            last_quiz_date: today,
             daily_ad_quiz_watched: 0,
             daily_ad_energy_watched: 0,
             last_channel_join_bonus_date: null,
@@ -82,50 +71,40 @@ async function loadOrCreateUser(user) {
         userData = newUser;
         await logTransaction('system', 0, 'Welcome Bonus');
     } else {
-        // Load existing user
         userData = doc.data();
-        // Reset daily limits if it's a new day
         const today = new Date().toISOString().split('T')[0];
         if (userData.last_login_date !== today) {
             await userRef.update({
                 last_login_date: today,
-                energy: 5, // Reset energy
-                daily_quiz_limit: 15, // Reset quiz limit
+                energy: 5,
+                daily_quiz_limit: 15,
                 daily_ad_quiz_watched: 0,
                 daily_ad_energy_watched: 0,
             });
-            // Refetch the updated data
             const updatedDoc = await userRef.get();
             userData = updatedDoc.data();
         }
     }
     
-    // Once data is loaded, hide loader and show app
     loader.style.display = 'none';
     appContainer.style.display = 'flex';
     updateAllUI();
-    fetchHistory();
 }
 
 function updateAllUI() {
-    // Profile
-    document.getElementById('profile-username').innerText = userData.first_name;
+    if (!userData) return;
+    document.getElementById('profile-username').innerText = userData.first_name || 'Player';
     document.getElementById('profile-userid').innerText = `ID: ${userData.telegram_user_id}`;
-    document.getElementById('profile-points').innerText = userData.total_points;
-    document.getElementById('profile-referrals').innerText = userData.total_referrals;
-    document.getElementById('profile-energy').innerText = `${userData.energy} / 5+`;
-    document.getElementById('profile-quiz-limit').innerText = `${userData.daily_quiz_limit} / 15+`;
-    document.getElementById('profile-referral-code').innerText = userData.referral_code;
-
-    // Referral
-    document.getElementById('referral-code-text').innerText = userData.referral_code;
-    
-    // Premium/Tasks
-    document.getElementById('ad-quiz-limit-tracker').innerText = `Ads watched today: ${userData.daily_ad_quiz_watched}/15`;
-    document.getElementById('ad-energy-limit-tracker').innerText = `Ads watched today: ${userData.daily_ad_energy_watched}/20`;
+    document.getElementById('profile-points').innerText = userData.total_points || 0;
+    document.getElementById('profile-referrals').innerText = userData.total_referrals || 0;
+    document.getElementById('profile-energy').innerText = `${userData.energy || 0} / 5+`;
+    document.getElementById('profile-quiz-limit').innerText = `${userData.daily_quiz_limit || 0} / 15+`;
+    document.getElementById('profile-referral-code').innerText = userData.referral_code || 'Loading...';
+    document.getElementById('referral-code-text').innerText = userData.referral_code || 'Loading...';
+    document.getElementById('ad-quiz-limit-tracker').innerText = `Ads watched today: ${userData.daily_ad_quiz_watched || 0}/15`;
+    document.getElementById('ad-energy-limit-tracker').innerText = `Ads watched today: ${userData.daily_ad_energy_watched || 0}/20`;
 }
 
-// --- NAVIGATION ---
 function setupEventListeners() {
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -136,7 +115,6 @@ function setupEventListeners() {
         });
     });
 
-    // Add other event listeners
     document.getElementById('start-quiz-btn').addEventListener('click', startQuiz);
     document.getElementById('join-channel-btn').addEventListener('click', joinChannelTask);
     document.getElementById('watch-ad-quiz-btn').addEventListener('click', () => watchAdFor('quiz'));
@@ -152,25 +130,21 @@ function setupEventListeners() {
 }
 
 function showPage(pageId) {
-    pages.forEach(page => {
-        page.classList.remove('active');
-    });
+    pages.forEach(page => page.classList.remove('active'));
     const newPage = document.getElementById(pageId);
     if (newPage) {
         newPage.classList.add('active');
-        if(pageId === 'history-section') fetchHistory(); // Refresh history on view
+        if(pageId === 'history-section') fetchHistory();
     }
 }
 
 // --- QUIZ LOGIC ---
 function startQuiz() {
     if (userData.daily_quiz_limit <= 0) {
-        alert("You've reached your daily quiz limit! Watch an ad in the Premium section for more.");
-        return;
+        return alert("You've reached your daily quiz limit! Watch an ad in the Premium section for more.");
     }
     if (userData.energy <= 0) {
-        alert("You're out of energy! Answer correctly or watch an ad to get more.");
-        return;
+        return alert("You're out of energy! Answer correctly or watch an ad to get more.");
     }
 
     document.getElementById('quiz-main-view').style.display = 'none';
@@ -179,13 +153,8 @@ function startQuiz() {
 }
 
 function loadNextQuestion() {
-    if (userData.daily_quiz_limit <= 0) {
-        endQuiz("You've used all your quizzes for today!");
-        return;
-    }
-    
-    let availableQuestions = quizData.map((_, index) => index)
-        .filter(index => !(userData.played_question_indices || []).includes(index));
+    let playedIndices = userData.played_question_indices || [];
+    let availableQuestions = quizData.map((_, index) => index).filter(index => !playedIndices.includes(index));
 
     if (availableQuestions.length === 0) {
         userData.played_question_indices = [];
@@ -207,7 +176,6 @@ function loadNextQuestion() {
         button.onclick = () => handleAnswer(button, option, question.correctAnswer);
         optionsContainer.appendChild(button);
     });
-
     startTimer();
 }
 
@@ -216,9 +184,7 @@ function startTimer() {
     const timerBar = document.getElementById('quiz-timer-bar');
     timerBar.style.transition = 'none';
     timerBar.style.width = '100%';
-    
     void timerBar.offsetWidth; 
-
     timerBar.style.transition = `width ${timeLeft}s linear`;
     timerBar.style.width = '0%';
     
@@ -227,7 +193,9 @@ function startTimer() {
         timeLeft--;
         if (timeLeft < 0) {
             clearInterval(timerInterval);
-            handleAnswer(null, null, quizData.find(q => q.question === document.getElementById('quiz-question').innerText).correctAnswer);
+            const currentQuestionText = document.getElementById('quiz-question').innerText;
+            const currentQuestion = quizData.find(q => q.question === currentQuestionText);
+            handleAnswer(null, null, currentQuestion.correctAnswer);
         }
     }, 1000);
 }
@@ -265,7 +233,7 @@ async function handleAnswer(selectedButton, selectedAnswer, correctAnswer) {
         played_question_indices: userData.played_question_indices
     });
     
-    await logTransaction('quiz', pointsEarned, document.getElementById('quiz-question').innerText.substring(0, 30) + '...');
+    await logTransaction('quiz', pointsEarned, `Quiz: ${correctAnswer}`);
     updateAllUI();
 
     setTimeout(() => {
@@ -289,12 +257,10 @@ function endQuiz(message) {
 async function joinChannelTask() {
     const today = new Date().toISOString().split('T')[0];
     if (userData.last_channel_join_bonus_date === today) {
-        alert("You have already claimed this bonus today.");
-        return;
+        return alert("You have already claimed this bonus today.");
     }
     
     tg.openTelegramLink("https://t.me/AGuttuGhosh");
-    
     const pointsEarned = 5;
     userData.total_points += pointsEarned;
     userData.last_channel_join_bonus_date = today;
@@ -303,7 +269,6 @@ async function joinChannelTask() {
         total_points: firebase.firestore.FieldValue.increment(pointsEarned),
         last_channel_join_bonus_date: today
     });
-    
     await logTransaction('task', pointsEarned, 'Joined Telegram Channel');
     alert(`Thank you! ${pointsEarned} points have been added.`);
     updateAllUI();
@@ -311,41 +276,35 @@ async function joinChannelTask() {
 
 function watchAdFor(type) {
     if (type === 'quiz' && userData.daily_ad_quiz_watched >= 15) {
-        alert("You have reached the daily limit for extra quiz ads.");
-        return;
+        return alert("You have reached the daily limit for extra quiz ads.");
     }
     if (type === 'energy' && userData.daily_ad_energy_watched >= 20) {
-        alert("You have reached the daily limit for extra energy ads.");
-        return;
+        return alert("You have reached the daily limit for extra energy ads.");
     }
 
     if (typeof show_9405037 === 'function') {
         show_9405037().then(async () => {
             alert('Ad finished! You have received your reward.');
             const userRef = db.collection('users').doc(String(currentUser.id));
-            
             if (type === 'quiz') {
                 await userRef.update({
                     daily_quiz_limit: firebase.firestore.FieldValue.increment(1),
                     daily_ad_quiz_watched: firebase.firestore.FieldValue.increment(1)
                 });
-                userData.daily_quiz_limit += 1;
-                userData.daily_ad_quiz_watched += 1;
+                userData.daily_quiz_limit++;
+                userData.daily_ad_quiz_watched++;
                 await logTransaction('ad_reward', 0, '+1 Quiz Limit');
             } else if (type === 'energy') {
                 await userRef.update({
                     energy: firebase.firestore.FieldValue.increment(1),
                     daily_ad_energy_watched: firebase.firestore.FieldValue.increment(1)
                 });
-                userData.energy += 1;
-                userData.daily_ad_energy_watched += 1;
-                 await logTransaction('ad_reward', 0, '+1 Energy');
+                userData.energy++;
+                userData.daily_ad_energy_watched++;
+                await logTransaction('ad_reward', 0, '+1 Energy');
             }
             updateAllUI();
-        }).catch(error => {
-            console.error('Ad display error:', error);
-            alert('Could not show ad at this moment. Please try again later.');
-        });
+        }).catch(error => alert('Could not show ad. Please try again later.'));
     } else {
         alert("Ad service is not available. Please try again later.");
     }
@@ -354,15 +313,17 @@ function watchAdFor(type) {
 // --- REFERRAL LOGIC ---
 function copyReferralCode() {
     navigator.clipboard.writeText(userData.referral_code).then(() => {
-        alert("Referral code copied!");
-    }).catch(err => {
-        alert("Failed to copy code.");
-    });
+        tg.showPopup({
+            type: 'ok',
+            title: 'Copied!',
+            message: 'Your referral code has been copied.'
+        });
+    }).catch(err => alert("Failed to copy code."));
 }
 
 function shareReferralLink() {
     const text = `Join Auiz Aarn Bot, play quizzes, and earn rewards! Use my code ${userData.referral_code} to get a starter bonus.`;
-    const url = `http://t.me/AuizAarnBot/Play`;
+    const url = `http://t.me/AuizAarnBot/Play`; // Replace with your bot's actual link if different
     tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
 }
 
@@ -402,7 +363,7 @@ async function submitReferralCode() {
     document.getElementById('submit-referral-btn').disabled = true;
 }
 
-// --- HISTORY LOGIC (UPDATED WITH ERROR HANDLING) ---
+// --- HISTORY LOGIC ---
 async function fetchHistory() {
     const historyList = document.getElementById('history-list');
     historyList.innerHTML = '<div class="spinner"></div>';
@@ -427,29 +388,17 @@ async function fetchHistory() {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'history-item';
             
-            let pointsClass = '';
-            let pointsSign = '';
-            if (item.points > 0) {
-                pointsClass = 'positive';
-                pointsSign = '+';
-            } else if (item.points < 0) {
-                pointsClass = 'negative';
-            }
+            let pointsClass = item.points > 0 ? 'positive' : (item.points < 0 ? 'negative' : '');
+            let pointsSign = item.points > 0 ? '+' : '';
             
-            let detailsHtml = `<div class="details">
-                                <span class="type">${item.description}</span>
-                                <span class="date">${date}</span>
-                               </div>`;
-            if(item.type === 'withdrawal') {
-                detailsHtml = `<div class="details">
-                                <span class="type">Withdrawal Request</span>
-                                <span class="date">${date}</span>
-                                <span class="status-${item.status.toLowerCase()}">Status: ${item.status}</span>
-                               </div>`;
-            }
+            let statusHtml = item.type === 'withdrawal' ? `<span class="status-${item.status.toLowerCase()}">Status: ${item.status}</span>` : '';
             
             itemDiv.innerHTML = `
-                ${detailsHtml}
+                <div class="details">
+                    <span class="type">${item.description}</span>
+                    <span class="date">${date}</span>
+                    ${statusHtml}
+                </div>
                 <span class="points ${pointsClass}">${pointsSign}${item.points}</span>
             `;
             historyList.appendChild(itemDiv);
@@ -460,8 +409,7 @@ async function fetchHistory() {
     }
 }
 
-
-async function logTransaction(type, points, description, status = 'completed') {
+async function logTransaction(type, points, description, status = 'Completed') {
     await db.collection('transactions').add({
         user_id: String(currentUser.id),
         type: type,
@@ -496,7 +444,7 @@ async function submitWithdrawal() {
     const address = document.getElementById('withdraw-address').value.trim();
 
     if (!address) { return alert("Please enter your wallet address or Pay ID."); }
-    if (userData.total_points < selectedWithdraw.points) { return alert("You do not have enough points for this withdrawal."); }
+    if (userData.total_points < selectedWithdraw.points) { return alert("You do not have enough points."); }
     if (selectedWithdraw.points === 850 && userData.first_850_withdrawal_used) { return alert("You can only use the 850 points withdrawal option once."); }
     
     const submitBtn = document.getElementById('submit-withdrawal-btn');
@@ -505,7 +453,6 @@ async function submitWithdrawal() {
 
     try {
         const userRef = db.collection('users').doc(String(currentUser.id));
-        
         await db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(userRef);
             if (userDoc.data().total_points < selectedWithdraw.points) { throw "Insufficient points!"; }
@@ -515,32 +462,15 @@ async function submitWithdrawal() {
             transaction.update(userRef, updateData);
 
             const withdrawalRef = db.collection('withdrawals').doc();
-            transaction.set(withdrawalRef, {
-                user_id: String(currentUser.id),
-                username: userData.telegram_username,
-                points_withdrawn: selectedWithdraw.points,
-                amount_usd: selectedWithdraw.usd,
-                method: method,
-                wallet_address: address,
-                status: 'Pending',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            const transactionRef = db.collection('transactions').doc();
-            transaction.set(transactionRef, {
-                user_id: String(currentUser.id),
-                type: 'withdrawal',
-                points: -selectedWithdraw.points,
-                description: `Withdrawal to ${method}`,
-                status: 'Pending',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            transaction.set(withdrawalRef, { user_id: String(currentUser.id), username: userData.telegram_username, points_withdrawn: selectedWithdraw.points, amount_usd: selectedWithdraw.usd, method: method, wallet_address: address, status: 'Pending', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            
+            await logTransaction('withdrawal', -selectedWithdraw.points, `Withdrawal to ${method}`, 'Pending');
         });
         
         userData.total_points -= selectedWithdraw.points;
         if (selectedWithdraw.points === 850) { userData.first_850_withdrawal_used = true; }
 
-        alert("Withdrawal request submitted successfully! It will be processed within 24-48 hours.");
+        alert("Withdrawal request submitted successfully!");
         updateAllUI();
         document.getElementById('withdraw-address').value = '';
     } catch (error) {
