@@ -245,5 +245,10 @@ const quizData = [
         question: "Which river flows through the most countries?",
         options: ["Nile", "Amazon", "Danube", "Congo"],
         correctAnswer: "Danube"
-    }
+    },
+    {
+        question: "The Phillips Curve illustrates the relationship between what two economic factors?",
+        options: ["Inflation and unemployment", "Supply and demand", "GDP and interest rates", "Imports and exports"],
+        correctAnswer: "Inflation and unemployment"
+    }       
 ];
