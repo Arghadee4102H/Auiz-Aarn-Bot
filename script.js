@@ -64,7 +64,7 @@ async function loadOrCreateUser(user) {
             daily_ad_quiz_watched: 0,
             daily_ad_energy_watched: 0,
             last_channel_join_bonus_date: null,
-            first_850_withdrawal_used: false,
+            first_1050_withdrawal_used: false,
             played_question_indices: []
         };
         await userRef.set(newUser);
@@ -445,7 +445,7 @@ async function submitWithdrawal() {
 
     if (!address) { return alert("Please enter your wallet address or Pay ID."); }
     if (userData.total_points < selectedWithdraw.points) { return alert("You do not have enough points."); }
-    if (selectedWithdraw.points === 850 && userData.first_850_withdrawal_used) { return alert("You can only use the 850 points withdrawal option once."); }
+    if (selectedWithdraw.points === 1050 && userData.first_1050_withdrawal_used) { return alert("You can only use the 1050 points withdrawal option once."); }
     
     const submitBtn = document.getElementById('submit-withdrawal-btn');
     submitBtn.disabled = true;
@@ -458,7 +458,7 @@ async function submitWithdrawal() {
             if (userDoc.data().total_points < selectedWithdraw.points) { throw "Insufficient points!"; }
             
             const updateData = { total_points: firebase.firestore.FieldValue.increment(-selectedWithdraw.points) };
-            if (selectedWithdraw.points === 850) { updateData.first_850_withdrawal_used = true; }
+            if (selectedWithdraw.points === 1050) { updateData.first_1050_withdrawal_used = true; }
             transaction.update(userRef, updateData);
 
             const withdrawalRef = db.collection('withdrawals').doc();
@@ -468,7 +468,7 @@ async function submitWithdrawal() {
         });
         
         userData.total_points -= selectedWithdraw.points;
-        if (selectedWithdraw.points === 850) { userData.first_850_withdrawal_used = true; }
+        if (selectedWithdraw.points === 1050) { userData.first_1050_withdrawal_used = true; }
 
         alert("Withdrawal request submitted successfully!");
         updateAllUI();
